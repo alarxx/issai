@@ -1,4 +1,5 @@
 import os
+import math
 
 import numpy as np
 
@@ -11,7 +12,6 @@ import tkinter
 # print(matplotlib.get_backend())
 
 import torch
-# import torch.nn as nn
 from torch import nn
 
 from torch.utils.data import DataLoader
@@ -27,165 +27,169 @@ print_available_devices()
 
 # ---
 
-CHANNELS, HEIGHT, WIDTH = 3, 28, 28
+if __name__ == "__main__":
 
-transform = transforms.Compose([
-    transforms.Resize((HEIGHT, WIDTH)),  # например
-    transforms.ToTensor(), # tensor(C, H, W)
-])
+    CHANNELS, HEIGHT, WIDTH = 3, 28, 28
 
-dataset = CustomImageDataset(root_dir="CMNIST", transform=transform)
+    transform = transforms.Compose([
+        transforms.Resize((HEIGHT, WIDTH)),  # например
+        transforms.ToTensor(), # tensor(C, H, W) in RGB
+    ])
 
-# Как разделить на Train, Val, Test
-# validation_data = K-Fold Cross Validation on training_data
-training_data, test_data = dataset.train_test_split(test_size=0.25, random_state=42)
+    dataset = CustomImageDataset(root_dir="dataset/CMNIST", transform=transform)
 
-# ---
+    # Как разделить на Train, Val, Test
+    # validation_data = K-Fold Cross Validation on training_data
+    training_data, test_data = dataset.train_test_split(test_size=0.25, random_state=42)
 
-batch_size = 4
+    # ---
 
-# Create data loaders.
-# Data Loader wraps an iterable over dataset
-# dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
-train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
-test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
+    batch_size = 64
 
-for X, y in test_dataloader:
-# X, y = next(iter(test_dataloader))
-    print(f"Shape of X [N, C, H, W]: {X.shape}") # torch.Size([64, 1, 28, 28]) torch.float32 [0; 1]
-    print(f"Shape of y: {y.shape} {y.dtype}") # torch.Size([64]) torch.int64
-    break
+    # Create data loaders.
+    # Data Loader wraps an iterable over dataset
+    # dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+    train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
+    test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
 
-# ---
+    for X, y in test_dataloader:
+    # X, y = next(iter(test_dataloader))
+        print(f"Shape of X [N, C, H, W]: {X.shape}") # torch.Size([64, 1, 28, 28]) torch.float32 [0; 1]
+        print(f"Shape of y: {y.shape} {y.dtype}") # torch.Size([64]) torch.int64
+        break
 
-def visualize(dataset, classes):
-    figure = plt.figure(figsize=(8, 8))
-    cols, rows = 3, 3
-    for i in range(1, cols * rows + 1):
-        sample_idx = torch.randint(len(dataset), size=(1,)).item()
-        img, label = dataset[sample_idx]
-        print(img.shape)
-        figure.add_subplot(rows, cols, i)
-        plt.title(classes[label])
-        plt.axis("off")
-        plt.imshow(img.permute(1, 2, 0)) # tensor(C, H, W), а метод принимает img(H, W, C)
-    plt.show()
+    # ---
 
-visualize(dataset, dataset.classes)
+    def visualize(dataset, classes):
+        figure = plt.figure(figsize=(8, 8))
+        cols, rows = 3, 3
+        for i in range(1, cols * rows + 1):
+            sample_idx = torch.randint(len(dataset), size=(1,)).item()
+            img, label = dataset[sample_idx]
+            print(img.shape)
+            figure.add_subplot(rows, cols, i)
+            plt.title(classes[label])
+            plt.axis("off")
+            plt.imshow(img.permute(1, 2, 0)) # tensor(C, H, W), а метод принимает img(H, W, C)
+        plt.show()
 
-# ---
+    visualize(dataset, dataset.classes)
 
-device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
-print(f"Using {device} device")
+    # ---
 
-# ---
+    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+    print(f"Using {device} device")
 
-# Define model
-class NeuralNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.flatten = nn.Flatten() # flattens an image to row-vector [<->], so rows are samples -> shape[n, 784]
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(CHANNELS * WIDTH * HEIGHT, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 10)
-        )
+    # ---
 
-    def forward(self, x):
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
+    # Define model
+    class NeuralNetwork(nn.Module):
+        def __init__(self, classes):
+            super().__init__()
+            self.flatten = nn.Flatten() # flattens an image to row-vector [<->], so rows are samples -> shape[n, 784]
+            self.linear_relu_stack = nn.Sequential(
+                nn.Linear(CHANNELS * HEIGHT * WIDTH, 512),
+                nn.ReLU(),
+                nn.Linear(512, 512),
+                nn.ReLU(),
+                nn.Linear(512, len(classes))
+            )
 
-    def __setattr__(self, name, value):
-        print(f"__setattr__ called: {name} = {value}")
-        super().__setattr__(name, value)
+        def forward(self, x):
+            x = self.flatten(x)
+            logits = self.linear_relu_stack(x)
+            return logits
 
-model = NeuralNetwork().to(device)
-# print(type(nn.Sequential()))
-# print(type(nn.Module()))
-# print(type(model))
-# print(model)
-# print(model.parameters())
-# for param in model.parameters():
-#     print(param) # tensors
-print(f"Model structure: {model}\n\n")
-for name, param in model.named_parameters():
-    print(f"Layer: {name} | Size: {param.size()} | Values[:2] : {param[:2]} \n")
+        def __setattr__(self, name, value):
+            print(f"__setattr__ called: {name} = {value}")
+            super().__setattr__(name, value)
 
-# ---
+    model = NeuralNetwork(classes=dataset.classes).to(device)
+    # print(type(nn.Sequential()))
+    # print(type(nn.Module()))
+    # print(type(model))
+    # print(model)
+    # print(model.parameters())
+    # for param in model.parameters():
+    #     print(param) # tensors
+    print(f"Model structure: {model}\n\n")
+    for name, param in model.named_parameters():
+        print(f"Layer: {name} | Size: {param.size()} | Values[:2] : {param[:2]} \n")
 
-X = torch.rand(2, 1, 28, 28, device=device) # (N, C, H, W)
-logits = model(X)
-print(logits.shape)
-pred_probab = nn.Softmax(dim=1)(logits) # along row, columns are entries
-print(pred_probab)
-y_pred = pred_probab.argmax(dim=1) # along row
-# y_pred = [y1, y2]
-print(f"Predicted class: {y_pred}")
+    # ---
 
-# ---
-
-loss_fn = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
-
-def train(dataloader, model, loss_fn, optimizer):
-    size = len(dataloader.dataset)
-    model.train()
-    for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)
-
-        # Compute prediction error
-        pred = model(X)
-        loss = loss_fn(pred, y)
-
-        # Backpropagation
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-
-        if batch % 100 == 0:
-            loss, current = loss.item(), (batch + 1) * len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-
-def test(dataloader, model, loss_fn):
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
-    model.eval()
-    test_loss, correct = 0, 0
     with torch.no_grad(): # temporarily changing global state - torch.is_grad_enabled()
-        for X, y in dataloader:
+        X = torch.rand(2, CHANNELS, HEIGHT, WIDTH, device=device) # (N, C, H, W)
+        model.eval()
+        logits = model(X)
+        print(logits.shape)
+        pred_probab = nn.Softmax(dim=1)(logits) # along row, columns are entries
+        print(pred_probab)
+        y_pred = pred_probab.argmax(dim=1) # along row
+        # y_pred = [y1, y2]
+        print(f"Predicted class: {y_pred}")
+
+    # ---
+
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3) # *math.sqrt(batch_size) # doesn't work with AdamW
+
+    def train(dataloader, model, loss_fn, optimizer):
+        size = len(dataloader.dataset)
+        model.train()
+        for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
+
+            # Compute prediction error
             pred = model(X)
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
-    test_loss /= num_batches
-    correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+            loss = loss_fn(pred, y)
 
-epochs = 5
-for t in range(epochs):
-    print(f"Epoch {t+1}\n-------------------------------")
-    train(train_dataloader, model, loss_fn, optimizer)
+            # Backpropagation
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+
+            if batch % 100 == 0:
+                loss, current = loss.item(), (batch + 1) * len(X)
+                print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+    def test(dataloader, model, loss_fn):
+        size = len(dataloader.dataset)
+        num_batches = len(dataloader)
+        model.eval()
+        test_loss, correct = 0, 0
+        with torch.no_grad(): # temporarily changing global state - torch.is_grad_enabled()
+            for X, y in dataloader:
+                X, y = X.to(device), y.to(device)
+                pred = model(X)
+                test_loss += loss_fn(pred, y).item()
+                correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+        test_loss /= num_batches
+        correct /= size
+        print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
+    epochs = 2
+    for t in range(epochs):
+        print(f"Epoch {t+1}\n-------------------------------")
+        train(train_dataloader, model, loss_fn, optimizer)
+        test(test_dataloader, model, loss_fn)
+    print("Done!")
+
+    torch.save(model.state_dict(), "model.pth")
+    print("Saved PyTorch Model State to model.pth")
+
+    # ---
+
+    model = NeuralNetwork(classes=dataset.classes).to(device)
+    model.load_state_dict(torch.load("model.pth", weights_only=True))
+
+    print(f"Test loaded model\n-------------------------------")
     test(test_dataloader, model, loss_fn)
-print("Done!")
 
-torch.save(model.state_dict(), "model.pth")
-print("Saved PyTorch Model State to model.pth")
-
-# ---
-
-model = NeuralNetwork().to(device)
-model.load_state_dict(torch.load("model.pth", weights_only=True))
-
-print(f"Test loaded model\n-------------------------------")
-test(test_dataloader, model, loss_fn)
-
-model.eval()
-x, y = test_data[0][0], test_data[0][1] # ???
-with torch.no_grad():
-    x = x.to(device)
-    pred = model(x)
-    predicted, actual = labels_map[pred[0].argmax(0).item()], labels_map[y]
-    print(f'Predicted: "{predicted}", Actual: "{actual}"')
+    model.eval()
+    x, y = test_data[0]
+    with torch.no_grad():
+        x = x.unsqueeze(0).to(device) # [N, C, H, W]
+        pred = model(x)
+        predicted, actual = dataset.classes[pred[0].argmax(0).item()], dataset.classes[y]
+        print(f'Predicted: "{predicted}", Actual: "{actual}"')
