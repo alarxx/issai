@@ -1,6 +1,7 @@
 import os
 from PIL import Image
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
+from sklearn.model_selection import train_test_split
 
 # Like ImageFolder
 # dataset = datasets.ImageFolder(root, transform)
@@ -11,9 +12,9 @@ class CustomImageDataset(Dataset):
         self.transform = transform
 
         self.image_paths = []
-        self.labels = []
+        self.labels = [] # хранит в виде индексов классов
         self.classes = [] # idx_to_class
-        self.class_to_idx = {}
+        self.class_to_idx = {} # isn't it redundant?
 
         # assign index to each class folder
         for idx, class_name in enumerate(sorted(os.listdir(root_dir))):
@@ -37,3 +38,12 @@ class CustomImageDataset(Dataset):
             image = self.transform(image)
 
         return image, label
+
+    def train_test_split(self, test_size=0.25, random_state=42):
+        indices = list(range(len(self)))
+        train_idx, test_idx = train_test_split(indices,
+                                               test_size=test_size,
+                                               shuffle=True,
+                                               random_state=random_state,
+                                               stratify=self.labels)
+        return Subset(self, train_idx), Subset(self, test_idx)

@@ -20,6 +20,11 @@ from torchvision import datasets, transforms
 import torch.nn.functional as F
 import torch.optim as optim
 
+# utils
+from utils.CustomImageDataset import CustomImageDataset
+from utils.devices import print_available_devices
+print_available_devices()
+
 # ---
 
 transform = transforms.Compose([
@@ -30,37 +35,18 @@ transform = transforms.Compose([
 dataset = CustomImageDataset(root_dir="CMNIST", transform=transform)
 
 # Как разделить на Train, Val, Test
-# training_data =
-# validation_data =
-# test_data =
-
-dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+# validation_data = K-Fold Cross Validation on training_data
+training_data, test_data = dataset.train_test_split(test_size=0.25, random_state=42)
 
 # ---
 
-def visualize(dataset=training_data):
-    figure = plt.figure(figsize=(8, 8))
-    cols, rows = 3, 3
-    for i in range(1, cols * rows + 1):
-        sample_idx = torch.randint(len(dataset), size=(1,)).item()
-        img, label = dataset[sample_idx]
-        figure.add_subplot(rows, cols, i)
-        plt.title(labels_map[label])
-        plt.axis("off")
-        plt.imshow(img.squeeze(), cmap="gray")
-    plt.show()
-
-# visualize(training_data)
-# visualize(test_data)
-
-# ---
-
-batch_size = 64
+batch_size = 4
 
 # Create data loaders.
 # Data Loader wraps an iterable over dataset
-train_dataloader = DataLoader(training_data, batch_size=batch_size)
-test_dataloader = DataLoader(test_data, batch_size=batch_size)
+# dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
+test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
 
 for X, y in test_dataloader:
 # X, y = next(iter(test_dataloader))
@@ -70,8 +56,23 @@ for X, y in test_dataloader:
 
 # ---
 
-from utils.devices import print_available_devices
-print_available_devices()
+def visualize(dataset, classes):
+    figure = plt.figure(figsize=(8, 8))
+    cols, rows = 3, 3
+    for i in range(1, cols * rows + 1):
+        sample_idx = torch.randint(len(dataset), size=(1,)).item()
+        img, label = dataset[sample_idx]
+        print(img.shape)
+        figure.add_subplot(rows, cols, i)
+        plt.title(classes[label])
+        plt.axis("off")
+        plt.imshow(img.permute(1, 2, 0)) # tensor(C, H, W), а метод принимает img(H, W, C)
+    plt.show()
+
+visualize(dataset, dataset.classes)
+
+# ---
+
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 print(f"Using {device} device")
 
