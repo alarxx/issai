@@ -12,15 +12,15 @@ class CustomImageDataset(Dataset):
 
         self.image_paths = []
         self.labels = []
-        self.classes = []
-        self.idx_to_class = {}
+        self.classes = [] # idx_to_class
+        self.class_to_idx = {}
 
         # assign index to each class folder
         for idx, class_name in enumerate(sorted(os.listdir(root_dir))):
             class_path = os.path.join(root_dir, class_name)
             if os.path.isdir(class_path): # is it necessary?
                 self.classes.append(class_name)
-                self.idx_to_class[idx] = class_name # ???
+                self.class_to_idx[class_name] = idx # ???
                 for fname in os.listdir(class_path):
                     if fname.endswith(('.png', '.jpg', '.jpeg')):
                         self.image_paths.append(os.path.join(class_path, fname))

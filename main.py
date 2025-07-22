@@ -30,9 +30,9 @@ transform = transforms.Compose([
 dataset = CustomImageDataset(root_dir="CMNIST", transform=transform)
 
 # Как разделить на Train, Val, Test
-training_data =
-validation_data =
-test_data =
+# training_data =
+# validation_data =
+# test_data =
 
 dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
