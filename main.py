@@ -21,15 +21,17 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 # utils
-from utils.CustomImageDataset import CustomImageDataset
+from utils.data.CustomImageDataset import CustomImageDataset
 from utils.devices import print_available_devices
 print_available_devices()
 
 # ---
 
+CHANNELS, HEIGHT, WIDTH = 3, 28, 28
+
 transform = transforms.Compose([
-    transforms.Resize((28, 28)),  # например
-    transforms.ToTensor(),
+    transforms.Resize((HEIGHT, WIDTH)),  # например
+    transforms.ToTensor(), # tensor(C, H, W)
 ])
 
 dataset = CustomImageDataset(root_dir="CMNIST", transform=transform)
@@ -84,7 +86,7 @@ class NeuralNetwork(nn.Module):
         super().__init__()
         self.flatten = nn.Flatten() # flattens an image to row-vector [<->], so rows are samples -> shape[n, 784]
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(28*28, 512),
+            nn.Linear(CHANNELS * WIDTH * HEIGHT, 512),
             nn.ReLU(),
             nn.Linear(512, 512),
             nn.ReLU(),
@@ -112,6 +114,8 @@ print(f"Model structure: {model}\n\n")
 for name, param in model.named_parameters():
     print(f"Layer: {name} | Size: {param.size()} | Values[:2] : {param[:2]} \n")
 
+# ---
+
 X = torch.rand(2, 1, 28, 28, device=device) # (N, C, H, W)
 logits = model(X)
 print(logits.shape)
@@ -120,6 +124,8 @@ print(pred_probab)
 y_pred = pred_probab.argmax(dim=1) # along row
 # y_pred = [y1, y2]
 print(f"Predicted class: {y_pred}")
+
+# ---
 
 loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
@@ -177,7 +183,7 @@ print(f"Test loaded model\n-------------------------------")
 test(test_dataloader, model, loss_fn)
 
 model.eval()
-x, y = test_data[0][0], test_data[0][1]
+x, y = test_data[0][0], test_data[0][1] # ???
 with torch.no_grad():
     x = x.to(device)
     pred = model(x)
