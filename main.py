@@ -46,13 +46,12 @@ if __name__ == "__main__":
 
     # ---
 
-    batch_size = 256
+    BATCH_SIZE = 256
 
     # Create data loaders.
     # Data Loader wraps an iterable over dataset
-    # dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
-    train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
-    test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
+    train_dataloader = DataLoader(training_data, batch_size=BATCH_SIZE, shuffle=True)
+    test_dataloader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=True)
 
     for X, y in test_dataloader:
     # X, y = next(iter(test_dataloader))
@@ -79,7 +78,9 @@ if __name__ == "__main__":
 
     # ---
 
-    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+    # device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
     print(f"Using {device} device")
 
     # ---
@@ -134,7 +135,7 @@ if __name__ == "__main__":
     # ---
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3) # *math.sqrt(batch_size) # doesn't work with AdamW
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3) # *math.sqrt(BATCH_SIZE) # doesn't work with AdamW
 
     def train(dataloader, model, loss_fn, optimizer, device):
         size = len(dataloader.dataset)
@@ -226,7 +227,7 @@ if __name__ == "__main__":
 
     model = MLP(classes=dataset.classes).to(device)
 
-    checkpoint = torch.load(f"checkpoint_{epochs-1}.pth")
+    checkpoint = torch.load(f"checkpoint_{epochs-1}.pth", weights_only=False)
     model.load_state_dict(
         checkpoint["model_state_dict"]
     )
