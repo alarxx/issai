@@ -189,10 +189,10 @@ if __name__ == "__main__":
         return test_loss.item(), correct.item()
 
 
-    epochs = 5
+    EPOCHS = 5
     train_losses, train_accuracies = [], []
     test_losses, test_accuracies = [], []
-    for t in range(epochs):
+    for t in range(EPOCHS):
         print(f"Epoch {t+1}\n-------------------------------")
         # train
         train_loss, train_acc = train(train_dataloader, model, loss_fn, optimizer, device)
@@ -227,7 +227,7 @@ if __name__ == "__main__":
 
     model = MLP(classes=dataset.classes).to(device)
 
-    checkpoint = torch.load(f"checkpoint_{epochs-1}.pth", weights_only=False)
+    checkpoint = torch.load(f"checkpoint_{EPOCHS-1}.pth", weights_only=False)
     model.load_state_dict(
         checkpoint["model_state_dict"]
     )
