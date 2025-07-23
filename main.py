@@ -24,6 +24,8 @@ import torch.optim as optim
 from utils.data.CustomImageDataset import CustomImageDataset
 from utils.devices import print_available_devices
 print_available_devices()
+from utils.plot import plot4
+from utils.save import save
 
 # ---
 
@@ -44,7 +46,7 @@ if __name__ == "__main__":
 
     # ---
 
-    batch_size = 64
+    batch_size = 256
 
     # Create data loaders.
     # Data Loader wraps an iterable over dataset
@@ -134,9 +136,11 @@ if __name__ == "__main__":
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3) # *math.sqrt(batch_size) # doesn't work with AdamW
 
-    def train(dataloader, model, loss_fn, optimizer):
+    def train(dataloader, model, loss_fn, optimizer, device):
         size = len(dataloader.dataset)
+        num_batches = len(dataloader)
         model.train()
+        train_loss, correct = torch.tensor(0., device=device), torch.tensor(0., device=device)
         for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
 
@@ -149,42 +153,83 @@ if __name__ == "__main__":
             optimizer.step()
             optimizer.zero_grad()
 
-            if batch % 100 == 0:
-                loss, current = loss.item(), (batch + 1) * len(X)
-                print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            train_loss += loss
+            correct += (pred.argmax(1) == y).type(torch.float).sum()
+            # print("loss:", loss.dtype, "; correct:", correct.dtype)
 
-    def test(dataloader, model, loss_fn):
+            if batch % 100 == 0:
+                loss, current = loss.item(), (batch + 1) * dataloader.batch_size # len(X)
+                print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            # skip training
+            if batch == 5:
+                break
+        train_loss /= num_batches
+        correct /= size
+        return train_loss.item(), correct.item()
+
+
+    def test(dataloader, model, loss_fn, device):
         size = len(dataloader.dataset)
         num_batches = len(dataloader)
         model.eval()
-        test_loss, correct = 0, 0
+        test_loss, correct = torch.tensor(0., device=device), torch.tensor(0., device=device)
         with torch.no_grad(): # temporarily changing global state - torch.is_grad_enabled()
-            for X, y in dataloader:
+            for batch, (X, y) in enumerate(dataloader):
                 X, y = X.to(device), y.to(device)
                 pred = model(X)
-                test_loss += loss_fn(pred, y).item()
-                correct += (pred.argmax(1) == y).type(torch.float).sum().item()
-        test_loss /= num_batches
-        correct /= size
+                test_loss += loss_fn(pred, y)
+                correct += (pred.argmax(1) == y).type(torch.float).sum()
+                # skip training
+                if batch == 5:
+                    break
+            test_loss /= num_batches
+            correct /= size
         print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+        return test_loss.item(), correct.item()
 
-    epochs = 2
+
+    epochs = 5
+    train_losses, train_accuracies = [], []
+    test_losses, test_accuracies = [], []
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
-        train(train_dataloader, model, loss_fn, optimizer)
-        test(test_dataloader, model, loss_fn)
+        # train
+        train_loss, train_acc = train(train_dataloader, model, loss_fn, optimizer, device)
+        train_losses.append(train_loss)
+        train_accuracies.append(train_acc)
+        # test
+        test_loss, test_acc = test(test_dataloader, model, loss_fn, device)
+        test_losses.append(test_loss)
+        test_accuracies.append(test_acc)
     print("Done!")
 
-    torch.save(model.state_dict(), "model.pth")
-    print("Saved PyTorch Model State to model.pth")
+    # ---
+
+    save(model,
+         train_losses=train_losses,
+         train_accuracies=train_accuracies,
+         test_losses=test_losses,
+         test_accuracies=test_accuracies,
+         filename="checkpoint",
+    )
 
     # ---
 
     model = NeuralNetwork(classes=dataset.classes).to(device)
-    model.load_state_dict(torch.load("model.pth", weights_only=True))
+
+    checkpoint = torch.load("checkpoint.pth")
+    model.load_state_dict(
+        checkpoint["model_state_dict"]
+    )
+    plot4(
+        checkpoint["train_losses"],
+        checkpoint["train_accuracies"],
+        checkpoint["test_losses"],
+        checkpoint["test_accuracies"]
+    )
 
     print(f"Test loaded model\n-------------------------------")
-    test(test_dataloader, model, loss_fn)
+    test(test_dataloader, model, loss_fn, device)
 
     model.eval()
     x, y = test_data[0]
