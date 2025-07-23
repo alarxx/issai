@@ -201,23 +201,32 @@ if __name__ == "__main__":
         test_loss, test_acc = test(test_dataloader, model, loss_fn, device)
         test_losses.append(test_loss)
         test_accuracies.append(test_acc)
+        # save
+        save(model,
+            train_losses=train_losses,
+            train_accuracies=train_accuracies,
+            test_losses=test_losses,
+            test_accuracies=test_accuracies,
+            filename="checkpoint",
+            index=t
+        )
     print("Done!")
 
     # ---
 
-    save(model,
-         train_losses=train_losses,
-         train_accuracies=train_accuracies,
-         test_losses=test_losses,
-         test_accuracies=test_accuracies,
-         filename="checkpoint",
-    )
+    # save(model,
+    #      train_losses=train_losses,
+    #      train_accuracies=train_accuracies,
+    #      test_losses=test_losses,
+    #      test_accuracies=test_accuracies,
+    #      filename="checkpoint",
+    # )
 
     # ---
 
     model = NeuralNetwork(classes=dataset.classes).to(device)
 
-    checkpoint = torch.load("checkpoint.pth")
+    checkpoint = torch.load(f"checkpoint_{epochs-1}.pth")
     model.load_state_dict(
         checkpoint["model_state_dict"]
     )
