@@ -3,11 +3,11 @@ import torch
 def save(model,
             optimizer=None,
             train_losses=None,
-            test_losses=None,
+            val_losses=None,
             train_accuracies=None,
-            test_accuracies=None,
-            index=-1,
-            filename="checkpoint"):
+            val_accuracies=None,
+            savename="checkpoint",
+            index=-1):
     savings = {
         'model_state_dict': model.state_dict()
     }
@@ -15,13 +15,13 @@ def save(model,
         savings["optimizer_state_dict"] = optimizer.state_dict()
     if train_losses is not None:
         savings['train_losses'] = train_losses
-    if test_losses is not None:
-        savings['test_losses'] = test_losses
+    if val_losses is not None:
+        savings['val_losses'] = val_losses
     if train_accuracies is not None:
         savings['train_accuracies'] = train_accuracies
-    if test_accuracies is not None:
-        savings['test_accuracies'] = test_accuracies
+    if val_accuracies is not None:
+        savings['val_accuracies'] = val_accuracies
     if index >= 0:
-        filename = f"{filename}_{index}"
-    torch.save(savings, f"{filename}.pth")
-    print(f"Saved in file: {filename}.pth")
+        savename = f"{savename}_{index}"
+    torch.save(savings, f"{savename}.pth")
+    print(f"Saved in file: {savename}.pth")

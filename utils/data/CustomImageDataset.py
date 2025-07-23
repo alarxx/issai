@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 
 class CustomImageDataset(Dataset):
     def __init__(self, root_dir, transform=None):
-        self.root_dir = root_dir
+        self.root_dir = root_dir # path
         self.transform = transform
 
         self.image_paths = []
