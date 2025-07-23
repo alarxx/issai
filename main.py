@@ -85,7 +85,7 @@ if __name__ == "__main__":
     # ---
 
     # Define model
-    class NeuralNetwork(nn.Module):
+    class MLP(nn.Module):
         def __init__(self, classes):
             super().__init__()
             self.flatten = nn.Flatten() # flattens an image to row-vector [<->], so rows are samples -> shape[n, 784]
@@ -106,7 +106,7 @@ if __name__ == "__main__":
             print(f"__setattr__ called: {name} = {value}")
             super().__setattr__(name, value)
 
-    model = NeuralNetwork(classes=dataset.classes).to(device)
+    model = MLP(classes=dataset.classes).to(device)
     # print(type(nn.Sequential()))
     # print(type(nn.Module()))
     # print(type(model))
@@ -224,7 +224,7 @@ if __name__ == "__main__":
 
     # ---
 
-    model = NeuralNetwork(classes=dataset.classes).to(device)
+    model = MLP(classes=dataset.classes).to(device)
 
     checkpoint = torch.load(f"checkpoint_{epochs-1}.pth")
     model.load_state_dict(
